@@ -41,12 +41,15 @@ This is a plotting server for the Bantam Tools NextDraw (AxiDraw A3) on Raspberr
 | `PEN_BRUSH_B` | 19200 | SG90 ~113° |
 | `PEN_IDLE` | 17500 | SG90 ~104° neutral |
 
-### Current file state
-- `plottertest.py` — basic Plotter class (NextDraw library only, no tool servo)
-- `plottertest-2.py` — full Plotter class with dual-serial and `swap_pen()` support; this is the reference implementation
-- `servo.py` — standalone EBB serial diagnostic script
-- `plotter.py` / `server.py` — referenced in README but not yet created (WIP)
-- `demo/` — sample SVGs for testing plots
+### File structure
+- `plotter.py` — canonical `Plotter` class; accepts optional `log_fn` (defaults to `print`) so the server can capture output
+- `server.py` — FastAPI server; runs plot jobs in a background thread; endpoints: `POST /upload`, `POST /plot`, `GET /status`
+- `static/index.html` — minimal web UI; two SVG slots (A required, B optional); polls `/status` at 800ms
+- `plottertest-2.py` — standalone quick-test script (Plotter class inline, no imports); run directly on the Pi
+- `plottertest.py` — earlier prototype, NextDraw only (no tool servo)
+- `servo.py` — raw EBB serial diagnostic
+- `uploads/` — uploaded SVGs stored here by the server (uuid-named)
+- `demo/` — sample SVGs
 
 ### Simulation mode
 When no plotter is connected, `_connect_plotter()` returns `False` and plot/move calls are skipped silently. Serial calls (`_open_ebb`) print a warning but do not crash.

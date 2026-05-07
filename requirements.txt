@@ -1,0 +1,5 @@
+nextdraw
+pyserial
+fastapi
+uvicorn[standard]
+python-multipart

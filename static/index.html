@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plotter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 1.5rem;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .slot {
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 1rem;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.15s;
+      user-select: none;
+    }
+    .slot:hover { border-color: #444; }
+    .slot.drag-over { border-color: #4a9eff; background: #0d1a2a; }
+    .slot.loaded { border-color: #4a9eff44; }
+
+    .slot-tag {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #444;
+      position: absolute;
+      top: 10px;
+      left: 12px;
+    }
+    .slot.loaded .slot-tag { color: #4a9eff; }
+
+    .slot-clear {
+      font-size: 14px;
+      color: #333;
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      cursor: pointer;
+      line-height: 1;
+      display: none;
+    }
+    .slot.loaded .slot-clear { display: block; color: #555; }
+    .slot-clear:hover { color: #999; }
+
+    .slot-preview {
+      max-width: 100%;
+      max-height: 100px;
+      object-fit: contain;
+      display: none;
+      border-radius: 2px;
+    }
+    .slot.loaded .slot-preview { display: block; }
+
+    .slot-hint {
+      font-size: 11px;
+      color: #333;
+    }
+    .slot.loaded .slot-hint { display: none; }
+
+    .slot-name {
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+      word-break: break-all;
+      max-width: 100%;
+      display: none;
+    }
+    .slot.loaded .slot-name { display: block; }
+
+    .slot-optional {
+      font-size: 10px;
+      color: #2a2a2a;
+      display: block;
+      margin-top: 2px;
+    }
+
+    #plot {
+      width: 100%;
+      padding: 11px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #888;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: not-allowed;
+      margin-bottom: 1.5rem;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    #plot.ready {
+      background: #4a9eff;
+      border-color: #4a9eff;
+      color: #fff;
+      cursor: pointer;
+    }
+    #plot.ready:hover { background: #3a8eee; border-color: #3a8eee; }
+    #plot:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #2a2a2a;
+    }
+    .dot.running { background: #f0a0ff; animation: blink 0.9s ease-in-out infinite; }
+    .dot.done { background: #4caf50; }
+    .dot.error { background: #f44; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    #statusText { color: #555; font-size: 11px; letter-spacing: 0.05em; }
+
+    #log {
+      background: #0c0c0c;
+      border: 1px solid #1e1e1e;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #666;
+      min-height: 80px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Plotter</h1>
+
+  <div class="slots">
+    <div class="slot" id="slotA">
+      <span class="slot-tag">Pen A</span>
+      <span class="slot-clear" id="clearA">×</span>
+      <img class="slot-preview" id="previewA" alt="">
+      <span class="slot-hint">click or drop SVG</span>
+      <span class="slot-name" id="nameA"></span>
+    </div>
+    <div class="slot" id="slotB">
+      <span class="slot-tag">Pen B <span class="slot-optional">optional</span></span>
+      <span class="slot-clear" id="clearB">×</span>
+      <img class="slot-preview" id="previewB" alt="">
+      <span class="slot-hint">click or drop SVG</span>
+      <span class="slot-name" id="nameB"></span>
+    </div>
+  </div>
+
+  <button id="plot">Plot</button>
+
+  <div class="status-row">
+    <div class="dot" id="dot"></div>
+    <span id="statusText">idle</span>
+  </div>
+  <div id="log"></div>
+
+  <script>
+    let uploadedA = null, uploadedB = null;
+
+    async function uploadFile(file) {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/upload', { method: 'POST', body: form });
+      return (await res.json()).filename;
+    }
+
+    function setupSlot(slotId, previewId, nameId, clearId, onLoad, onClear) {
+      const slot = document.getElementById(slotId);
+      const preview = document.getElementById(previewId);
+      const name = document.getElementById(nameId);
+      const clearBtn = document.getElementById(clearId);
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.svg';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+
+      async function handleFile(file) {
+        if (!file || !file.name.toLowerCase().endsWith('.svg')) return;
+        preview.src = URL.createObjectURL(file);
+        name.textContent = file.name;
+        slot.classList.add('loaded');
+        const filename = await uploadFile(file);
+        onLoad(filename);
+      }
+
+      slot.addEventListener('click', e => {
+        if (e.target === clearBtn) return;
+        input.click();
+      });
+      input.addEventListener('change', () => handleFile(input.files[0]));
+
+      slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+      slot.addEventListener('dragleave', e => { if (!slot.contains(e.relatedTarget)) slot.classList.remove('drag-over'); });
+      slot.addEventListener('drop', e => {
+        e.preventDefault();
+        slot.classList.remove('drag-over');
+        handleFile(e.dataTransfer.files[0]);
+      });
+
+      clearBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        preview.src = '';
+        name.textContent = '';
+        slot.classList.remove('loaded');
+        input.value = '';
+        onClear();
+      });
+    }
+
+    setupSlot('slotA', 'previewA', 'nameA', 'clearA',
+      f => { uploadedA = f; updatePlotBtn(); },
+      () => { uploadedA = null; updatePlotBtn(); }
+    );
+    setupSlot('slotB', 'previewB', 'nameB', 'clearB',
+      f => { uploadedB = f; },
+      () => { uploadedB = null; }
+    );
+
+    function updatePlotBtn() {
+      const btn = document.getElementById('plot');
+      const canPlot = uploadedA && btn.dataset.state !== 'running';
+      btn.classList.toggle('ready', !!uploadedA && btn.dataset.state !== 'running');
+      btn.disabled = !canPlot;
+    }
+
+    document.getElementById('plot').addEventListener('click', async () => {
+      if (!uploadedA) return;
+      const files = [uploadedA];
+      if (uploadedB) files.push(uploadedB);
+      const res = await fetch('/plot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        appendLog('Error: ' + (err.error || 'unknown'));
+        return;
+      }
+      const btn = document.getElementById('plot');
+      btn.dataset.state = 'running';
+      btn.classList.remove('ready');
+      btn.disabled = true;
+      lastLogLen = 0;
+      document.getElementById('log').textContent = '';
+      pollStatus();
+    });
+
+    let pollTimer = null;
+    let lastLogLen = 0;
+
+    function pollStatus() {
+      clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        const data = await fetch('/status').then(r => r.json());
+        applyStatus(data);
+        if (data.status !== 'running') clearInterval(pollTimer);
+      }, 800);
+    }
+
+    function applyStatus(data) {
+      const dot = document.getElementById('dot');
+      const text = document.getElementById('statusText');
+      dot.className = 'dot ' + data.status;
+      text.textContent = data.status;
+
+      const newLines = data.log.slice(lastLogLen);
+      newLines.forEach(appendLog);
+      lastLogLen = data.log.length;
+
+      if (data.status !== 'running') {
+        const btn = document.getElementById('plot');
+        btn.dataset.state = '';
+        updatePlotBtn();
+      }
+    }
+
+    function appendLog(line) {
+      const el = document.getElementById('log');
+      el.textContent += line + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    fetch('/status').then(r => r.json()).then(applyStatus);
+  </script>
+</body>
+</html>
