@@ -1,0 +1,5 @@
+plotter-env/
+__pycache__/
+*.pyc
+*.log
+uploads/
