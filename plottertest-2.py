@@ -13,6 +13,7 @@ PEN_BRUSH_A = 16000    # SG90 position (~97°)
 PEN_BRUSH_B = 19200    # SG90 position (~113°)
 PEN_IDLE = 17500       # SG90 position (~104°)
 
+DEMO_DIR = "demo"
 
 class Plotter:
     def __init__(self):
@@ -116,9 +117,9 @@ class Plotter:
 if __name__ == "__main__":
     p = Plotter()
     p.swap_pen("A")
-    p.plot_image("demo-1.svg")
+    p.plot_image(os.path.join(DEMO_DIR, "demo-1.svg"))
     p.swap_pen("B")
-    p.plot_image("demo-2.svg")
+    p.plot_image(os.path.join(DEMO_DIR, "demo-2.svg"))
     p.swap_pen("C")
     p.return_home()
     p.close()
