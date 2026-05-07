@@ -1,4 +1,4 @@
-nextdraw
+https://software-download.bantamtools.com/nd/api/nextdraw_api.zip
 pyserial
 fastapi
 uvicorn[standard]
